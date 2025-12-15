@@ -11,8 +11,17 @@ DB_PORT = os.getenv("SUPABASE_DB_PORT", "5432")
 
 def check_data():
     try:
+        # Resolve hostname to IPv4 to prevent IPv6 connection issues in GitHub Actions
+        import socket
+        try:
+            host_ip = socket.gethostbyname(DB_HOST)
+            print(f"Resolved {DB_HOST} to {host_ip}")
+        except Exception as e:
+            print(f"Warning: Could not resolve {DB_HOST}: {e}")
+            host_ip = DB_HOST
+
         conn = psycopg2.connect(
-            host=DB_HOST,
+            host=host_ip,
             database=DB_NAME,
             user=DB_USER,
             password=DB_PASS,
