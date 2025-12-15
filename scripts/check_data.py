@@ -11,11 +11,19 @@ DB_PORT = os.getenv("SUPABASE_DB_PORT", "5432")
 
 def check_data():
     try:
-        # Resolve hostname to IPv4 to prevent IPv6 connection issues in GitHub Actions
+        # Resolve hostname to IPv4 using getaddrinfo to strictly enforce IPv4
         import socket
+        import sys
+        
         try:
-            host_ip = socket.gethostbyname(DB_HOST)
-            print(f"Resolved {DB_HOST} to {host_ip}")
+            # Force IPv4 resolution
+            ip_infos = socket.getaddrinfo(DB_HOST, None, family=socket.AF_INET, type=socket.SOCK_STREAM)
+            if ip_infos:
+                host_ip = ip_infos[0][4][0]
+                print(f"Resolved {DB_HOST} to {host_ip}")
+            else:
+                print(f"Warning: No IPv4 address found for {DB_HOST}")
+                host_ip = DB_HOST
         except Exception as e:
             print(f"Warning: Could not resolve {DB_HOST}: {e}")
             host_ip = DB_HOST
@@ -60,6 +68,7 @@ def check_data():
         conn.close()
     except Exception as e:
         print(f"Error: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     check_data()
