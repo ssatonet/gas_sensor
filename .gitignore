@@ -1,0 +1,14 @@
+# Secrets
+memo.md
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+
+# OS
+.DS_Store
+
+# Data files (Optional: prevent large files)
+*.xlsx
+*.pptx
