@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:gas_sensor_app/data/providers.dart';
-import 'package:gas_sensor_app/data/models/models.dart';
+
 import 'package:gas_sensor_app/presentation/analysis/analysis_providers.dart';
 import 'package:gas_sensor_app/presentation/dashboard/equipment_detail_screen.dart';
 import 'package:intl/intl.dart';
@@ -186,7 +186,7 @@ class AnalysisScreen extends ConsumerWidget {
         LineChartBarData(
           spots: spots,
           isCurved: false,
-          color: color.withOpacity(0.7),
+          color: color.withValues(alpha: 0.7),
           barWidth: 2,
           dotData: const FlDotData(show: true),
           belowBarData: BarAreaData(show: false),
@@ -303,10 +303,22 @@ class AnalysisScreen extends ConsumerWidget {
 
     return analysisAsync.when(
       data: (analysis) {
+        // Find main model (highest count)
+        String mainModel = '';
+        int maxCount = -1;
+        analysis.modelDistribution.forEach((k, v) {
+          if (v > maxCount) {
+            maxCount = v;
+            mainModel = k;
+          }
+        });
+
         return Card(
           color: Colors.indigo.shade50,
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(20.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -317,40 +329,95 @@ class AnalysisScreen extends ConsumerWidget {
                     Text('AI インサイト (Beta)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo)),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+                
+                // 1. Data Scale
+                _buildSectionHeader('データ規模'),
+                _buildInfoRow('総点検レコード', '${analysis.totalRecords} 件'),
+                _buildInfoRow('管理センサー数', '${analysis.totalSensors} 台'),
+                _buildInfoRow('対象モデル', '${analysis.modelDistribution.length} 機種 (${analysis.modelDistribution.keys.join(", ")})'),
+                const SizedBox(height: 16),
+
+                // 2. Model Distribution
+                _buildSectionHeader('機種分布'),
+                ...analysis.modelDistribution.entries.map((e) {
+                  final isMain = e.key == mainModel;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 4.0),
+                    child: Text('・${e.key}: ${e.value} 台${isMain ? " (主力機種)" : ""}', style: const TextStyle(fontSize: 14)),
+                  );
+                }),
+                const SizedBox(height: 16),
+
+                // 3. Inspection Results
+                _buildSectionHeader('点検結果状況'),
+                _buildInfoRow('合格', '${analysis.totalPassRecords} 件'),
+                Text(
+                  '・不合格: ${analysis.totalFailRecords} 件 (全体の約${(analysis.totalRecords > 0 ? (analysis.totalFailRecords / analysis.totalRecords * 100) : 0).toStringAsFixed(1)}%)',
+                  style: const TextStyle(fontSize: 14, color: Colors.red, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+
+                // 4. Average Sensitivity
+                _buildSectionHeader('平均感度 (最新)'),
+                ...analysis.modelAverageSensitivity.entries.map((e) {
+                   String status = '良好';
+                   Color color = Colors.green;
+                   if (e.value < 88) {
+                     status = 'やや低下傾向';
+                     color = Colors.orange;
+                   }
+                   if (e.value < 60) {
+                     status = '要交換';
+                     color = Colors.red;
+                   }
+                   return Padding(
+                     padding: const EdgeInsets.only(bottom: 4.0),
+                     child: Row(
+                       children: [
+                         Text('・${e.key}: ${e.value.toStringAsFixed(1)}% '),
+                         Text('($status)', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+                       ],
+                     ),
+                   );
+                }),
+                 const SizedBox(height: 16),
+
+                // 5. Attention Needed
+                _buildSectionHeader('要注意センサー (直近で感度60%未満 または 不合格)'),
+                if (analysis.anomalies.isEmpty)
+                  const Text('・現在、要注意センサーはありません。', style: TextStyle(color: Colors.green)),
                 if (analysis.anomalies.isNotEmpty)
-                  Text('・要注意: ${analysis.anomalies.length} 台のセンサーが異常または交換時期です。', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
-                
-                const SizedBox(height: 8),
-                Text('・今後3ヶ月以内の交換予測: ${analysis.replacementForecast[3]} 台'),
-                Text('・今後6ヶ月以内の交換予測: ${analysis.replacementForecast[6]} 台'),
-                
-                const SizedBox(height: 8),
-                if (analysis.modelAverageLife.isNotEmpty)
-                if (analysis.modelAverageLife.isNotEmpty)
-                  ...analysis.modelAverageLife.entries.map((e) {
-                    final months = e.value / 30;
-                    final years = months / 12;
-                    String timeStr;
-                    if (e.value < 0) {
-                      timeStr = "交換推奨 (超過)";
-                    } else if (years >= 1) {
-                      timeStr = "約 ${years.toStringAsFixed(1)} 年";
-                    } else {
-                      timeStr = "約 ${months.toStringAsFixed(1)} ヶ月";
-                    }
-                    return Text('・モデル ${e.key} の平均残寿命: $timeStr');
+                  ...analysis.anomalies.map((a) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        '・TAGNO: ${a.tagNo} (${a.modelName}) - 感度 ${a.sensitivity.toStringAsFixed(1)}% (${DateFormat('yyyy/MM/dd').format(a.date)})\n  ※ ${a.reason}',
+                        style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    );
                   }),
-                  
-                if (analysis.anomalies.isEmpty && analysis.replacementForecast[3] == 0)
-                   const Text('・現在、緊急性の高い異常は見当たりません。サイトの状態は良好です。'),
               ],
             ),
           ),
         );
       },
-      loading: () => const Center(child: LinearProgressIndicator()),
-      error: (err, stack) => Text('Error loading insights: $err'),
+      loading: () => const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())),
+      error: (err, stack) => Card(color: Colors.red.shade50, child: Padding(padding: const EdgeInsets.all(16), child: Text('Error: $err'))),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, decoration: TextDecoration.underline)),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0),
+      child: Text('・$label: $value', style: const TextStyle(fontSize: 14)),
     );
   }
 }

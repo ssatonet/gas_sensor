@@ -76,7 +76,7 @@ class _InfoChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Text(
         label,
@@ -186,7 +186,6 @@ class _EquipmentListSectionState extends ConsumerState<EquipmentListSection> {
                   // Normal items are white/grey, Attention items get color
                   final isCritical = item.dangerLevel == 0;
                   final isWarning = item.dangerLevel == 1;
-                  
                   Color cardColor = Colors.white;
                   Color textColor = Colors.black87;
                   Color iconColor = Colors.grey;

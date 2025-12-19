@@ -12,6 +12,14 @@ class SiteModel {
       name: json['name'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'code': code,
+      'name': name,
+    };
+  }
 }
 
 class EquipmentModel {
@@ -46,6 +54,19 @@ class EquipmentModel {
       gasName: json['gas_name'],
       fullScale: json['full_scale'] != null ? (json['full_scale'] as num).toDouble() : null,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'site_id': siteId,
+      'tag_no': tagNo,
+      'serial_no': serialNo,
+      'model_name': modelName,
+      'sensor_type': sensorType,
+      'gas_name': gasName,
+      'full_scale': fullScale,
+    };
   }
 }
 

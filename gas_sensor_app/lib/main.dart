@@ -4,6 +4,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:gas_sensor_app/core/constants.dart';
 import 'package:gas_sensor_app/presentation/dashboard/dashboard_screen.dart';
 
+import 'package:gas_sensor_app/data/providers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -12,7 +15,16 @@ Future<void> main() async {
     anonKey: AppConstants.supabaseAnonKey,
   );
 
-  runApp(const ProviderScope(child: MyApp()));
+  final prefs = await SharedPreferences.getInstance();
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
